@@ -1,43 +1,37 @@
-import time
-from machine import Pin
-
 import services.websocket
 import services.wifi
 import services.pump
 
-from app import socket, pump, wifi, water_temperature
 import tools.temperature
+import tools.loop
+import tools.schedule
 
-pingLed = Pin(2, Pin.OUT)
-pingLed.on()
+import events.event
 
-
-@socket.on('PING')
-def pong(data, id):
-    pingLed.off()
-    time.sleep_ms(10)
-    pingLed.on()
-
-
-@socket.on('POST#STATE')
-def post_state(data, callback):
-    state = data['output']['state']
-    pump.switch(services.pump.ON if state else services.pump.OFF)
-    callback({
-        'status': 'OK',
-        'data': {
-            'state': state
-        }
-    })
-
+from app import socket, pump, wifi, water_temperature, ds
 
 water_temperature.init()
 pump.init()
 
-while True:
+loop = tools.loop.Loop()
+schedule = tools.schedule.Schedule(ds)
+
+loop.add_callback(name='pump', period=250, callback=lambda: pump.loop())
+loop.add_callback(name='water_temperature', period=500, callback=lambda: water_temperature.loop())
+loop.add_callback(name='refresh_temperature', period=500, callback=lambda: tools.temperature.refresh_temperature())
+loop.add_callback(name='socket', callback=lambda: socket.loop())
+loop.add_callback(name='schedule', period=250, callback=lambda: schedule.loop())
+
+
+@schedule.add((0, 0, 0), name='end_day')
+def end_day():
+    pump.end_day()
+
+
+@loop.add(name='check_network', period=2000)
+def check_network():
     wlan_status = wifi.wlan.status()
     if wlan_status == services.wifi.STAT_IDLE or wlan_status == 255:
-        # Connect to Wi-Fi app
         try:
             wifi.connect_best()
         except Exception as e:
@@ -45,20 +39,8 @@ while True:
     elif wlan_status == services.wifi.STAT_GOT_IP:
         socket_status = socket.status
         if socket_status == services.websocket.CLOSED or socket_status == services.websocket.IDLE:
-            # Connect to home server
             socket.connect()
-    socket.loop()
-    try:
-        pump.loop()
-    except Exception as e:
-        print(e)
-    try:
-        water_temperature.loop()
-    except Exception as e:
-        print(e)
-    try:
-        tools.temperature.refresh_temperature()
-    except Exception as e:
-        print(e)
-    print(water_temperature.temp_buffer)
-    time.sleep_ms(100)
+
+
+while True:
+    loop.loop()
