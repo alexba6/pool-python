@@ -1,7 +1,8 @@
 import binascii
+
 from machine import Pin
 import math
-import onewire
+from lib import onewire
 
 bus1wire = onewire.OneWire(Pin(13))
 
@@ -13,25 +14,25 @@ def refresh_temperature():
 
 
 def scan_sensors():
-    return [binascii.hexlify(rom) for rom in bus1wire.scan() if rom[0] in (0x10, 0x22, 0x28)]
+    return [binascii.hexlify(rom).decode() for rom in bus1wire.scan() if rom[0] in (0x10, 0x22, 0x28)]
 
 
 class TemperatureSensor:
-    id: str
+    id: str or None
 
-    def __init__(self, id: str):
+    def __init__(self, id: str or None = None):
         self.id = id
+        self.temp = -127
 
     def read(self, decimal: int = 2) -> float:
         temp_buffer = bytearray(9)
-        rom = binascii.unhexlify(self.id)
+        rom = binascii.unhexlify(self.id.encode())
         bus1wire.reset(True)
         bus1wire.select_rom(rom)
         bus1wire.writebyte(0xBE)
         bus1wire.readinto(temp_buffer)
         if bus1wire.crc8(temp_buffer):
             raise Exception("CRC error")
-        temp = -128
         if rom[0] == 0x10:
             if temp_buffer[1]:
                 t = temp_buffer[0] >> 1 | 0x80

@@ -4,4 +4,4 @@ venv
 *.bin
 config
 *.json
-test.py
+*.test.py
