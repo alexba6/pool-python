@@ -4,7 +4,7 @@ from machine import Pin
 import math
 from lib import onewire
 
-bus1wire = onewire.OneWire(Pin(13))
+bus1wire = onewire.OneWire(Pin(25))
 
 
 def refresh_temperature():

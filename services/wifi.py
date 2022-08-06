@@ -2,12 +2,11 @@ from network import WLAN
 
 from tools.config import Config
 
-STAT_IDLE = 0
-STAT_CONNECTING = 1
-STAT_WRONG_PASSWORD = 2
-STAT_NO_AP_FOUND = 3
-STAT_CONNECT_FAIL = 4
-STAT_GOT_IP = 5
+STAT_IDLE = 1000
+STAT_CONNECTING = 1001
+STAT_WRONG_PASSWORD = 202
+STAT_NO_AP_FOUND = 201
+STAT_GOT_IP = 1010
 
 
 class WifiApp:
@@ -31,6 +30,7 @@ class Wifi(Config):
 
     def connect(self, wifi_app: WifiApp):
         self.wlan.active(True)
+        print(wifi_app.ssid, wifi_app.password)
         self.wlan.connect(wifi_app.ssid, wifi_app.password)
         self.current_app = wifi_app
 

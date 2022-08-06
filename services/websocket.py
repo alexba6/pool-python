@@ -104,7 +104,7 @@ class WebSocket(Config):
         data = bytes(b ^ mask_bits[i % 4] for i, b in enumerate(data))
         self.client.write(data)
 
-    def send(self, id: str, event: str, data: object or str = ''):
+    def send(self, id: str, event: str, data: any):
         json_data = json.dumps({
             'id': id,
             'event': event,
@@ -115,8 +115,14 @@ class WebSocket(Config):
 
     def on(self, event: str):
         def wrapper(callback):
-            def inner(req_data, id):
-                callback(req_data, lambda data: self.send(id, 'CALLBACK', data))
+            def inner(req, id):
+                def res(status, res_data=''):
+                    self.send(id, 'CALLBACK', {
+                        'status': status,
+                        'data': res_data
+                    })
+
+                callback(req, res)
 
             self.listener[event] = inner
 

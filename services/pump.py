@@ -2,7 +2,7 @@ import time
 from machine import Pin
 
 from lib.ds1307 import DS1307
-from models.temp_slot import TempSlot
+from models.slots import TempSlot
 from services.water_temp import WaterTemp
 from tools.config import Config
 from tools.time_convert import get_sec
@@ -66,6 +66,7 @@ class PumpService(Config):
 
     def change_mode(self, mode: str):
         assert mode in [ON, OFF, AUTO], Exception('Invalid mode')
+        assert self.mode in [ON, OFF, AUTO], Exception('Cannot change mode')
         if self.mode != mode:
             if mode in [ON, OFF]:
                 self.manual_switch_time = time.time()
