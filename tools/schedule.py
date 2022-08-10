@@ -1,4 +1,4 @@
-from lib.ds1307 import DS1307
+from tools.ds1307 import DS1307
 from tools.time_convert import get_sec
 
 ALLOW_OFFSET = 10

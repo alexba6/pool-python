@@ -2,7 +2,7 @@ import binascii
 
 from machine import Pin
 import math
-from lib import onewire
+from tools import onewire
 
 bus1wire = onewire.OneWire(Pin(25))
 

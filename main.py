@@ -1,4 +1,4 @@
-import services.websocket
+import services.web_socket
 import services.wifi
 import services.pump
 
@@ -6,9 +6,7 @@ import tools.temperature
 import tools.loop
 import tools.schedule
 
-import events.stats
 import events.mode
-import events.slot
 
 from app import socket, pump, wifi, water_temperature, ds, outside_temperature
 
@@ -42,7 +40,7 @@ def check_network():
             print('wifi error', e)
     elif wlan_status == services.wifi.STAT_GOT_IP:
         socket_status = socket.status
-        if socket_status == services.websocket.CLOSED or socket_status == services.websocket.IDLE:
+        if socket_status == services.web_socket.CLOSED or socket_status == services.web_socket.IDLE:
             socket.connect()
 
 

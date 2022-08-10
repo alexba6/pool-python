@@ -2,27 +2,27 @@ import time
 
 import math
 
-from lib.ds1307 import DS1307
+from tools.ds1307 import DS1307
 from tools.config import Config
 from tools.temperature import TemperatureSensor
 from tools.time_convert import get_sec
 
 
-class OutsideTemp(Config):
+class OutsideTemp:
     sensor: TemperatureSensor
     temp_buffer: list
     lastTemp: float
     lastTempTime: int
     ds: DS1307
+    config: Config
 
     def __init__(self, ds: DS1307):
-        super().__init__('outside-temp')
         self.sensor = TemperatureSensor()
         self.lastTemp = - 127
         self.lastTempTime = 0
         self.temp_buffer = []
         self.ds = ds
-        self.load_config()
+        self.config = Config('outside-temp')
 
     def loop(self):
         now_time = time.time()

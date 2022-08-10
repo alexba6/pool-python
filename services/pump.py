@@ -1,8 +1,7 @@
 import time
 from machine import Pin
 
-from lib.ds1307 import DS1307
-from models.slots import TempSlot
+from tools.ds1307 import DS1307
 from services.water_temp import WaterTemp
 from tools.config import Config
 from tools.time_convert import get_sec
@@ -15,19 +14,19 @@ IDLE = 'IDLE'
 STARTING = 'STARTING'
 
 
-class PumpService(Config):
+class PumpService:
     pin: Pin
     mode: str
     state: bool
-    current_temp_slot: TempSlot or None
+    current_temp_slot: None
     current_temp_average: float
     switch_time: int
     manual_switch_time: int
     water_temp: WaterTemp
     ds: DS1307
+    config: Config
 
     def __init__(self, pin: int, ds: DS1307, water_temp: WaterTemp):
-        super().__init__('pump')
         self.pin = Pin(pin, Pin.OUT)
         self.mode = IDLE
         self.pin.on()
@@ -37,8 +36,8 @@ class PumpService(Config):
         self.switch_time = 0
         self.manual_switch_time = 0
         self.state = True
+        self.config = Config('pump')
         self.switch(False)
-        self.load_config()
 
     def init(self):
         self.mode = STARTING
@@ -46,11 +45,11 @@ class PumpService(Config):
 
     def refresh_temp_slot(self):
         self.current_temp_slot = None
-        json_temp_slots = self.config['temp_slots']
+        json_temp_slots = self.config.get('temp_slots')
         json_temp_slots.sort(key=lambda ts: ts['temp'], reverse=True)
         for json_temp_slot in json_temp_slots:
             if self.current_temp_average > json_temp_slot['temp']:
-                self.current_temp_slot = TempSlot(json_temp_slot)
+                # self.current_temp_slot = TempSlot(json_temp_slot)
                 break
 
     def switch(self, state: bool):

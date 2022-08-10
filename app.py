@@ -1,8 +1,9 @@
 import machine
 
-from lib.ds1307 import DS1307
+from tools.database import Database
+from tools.ds1307 import DS1307
 
-import services.websocket
+import services.web_socket
 import services.wifi
 import services.pump
 import services.water_temp
@@ -13,9 +14,10 @@ i2c = machine.I2C(
     scl=machine.Pin(22, mode=machine.Pin.OUT, pull=machine.Pin.PULL_UP)
 )
 
+db = Database('database')
 ds = DS1307(i2c)
-socket = services.websocket.WebSocket()
+socket = services.web_socket.WebSocketClient()
 water_temperature = services.water_temp.WaterTemp()
 outside_temperature = services.outside_temp.OutsideTemp(ds)
 pump = services.pump.PumpService(26, ds, water_temperature)
-wifi = services.wifi.Wifi()
+wifi = services.wifi.Wifi(db)

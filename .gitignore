@@ -5,3 +5,4 @@ venv
 config
 *.json
 *.test.py
+database

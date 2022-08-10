@@ -6,21 +6,21 @@ from tools.config import Config
 from tools.temperature import TemperatureSensor
 
 
-class WaterTemp(Config):
+class WaterTemp:
     sensor: TemperatureSensor
     temp_buffer: list
     lastTemp: float
     lastTempTime: int
     run: bool
+    config: Config
 
     def __init__(self):
-        super().__init__('water-temp')
         self.sensor = TemperatureSensor()
         self.lastTemp = - 127
         self.lastTempTime = 0
         self.temp_buffer = []
         self.run = False
-        self.load_config()
+        self.config = Config('water-temp')
 
     def loop(self):
         if not self.run:
