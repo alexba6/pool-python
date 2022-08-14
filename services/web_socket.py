@@ -3,14 +3,15 @@ import random
 import json
 import time
 import ustruct
-from socket import Socket, socket
+import socket
 
 from tools.config import Config
 from tools.id import id_generator
 
-OP_TEXT = 0x81
-OP_CLOSE = 0x08
-OP_PING = 0x09
+OP_TEXT_REQ = 0x81
+OP_TEXT_RES = 0x51
+OP_CLOSE = 0x58
+OP_PING = 0x59
 OP_PONG = 0x0a
 
 CLOSE_OK = 1000
@@ -29,7 +30,7 @@ CONNECTING = 2
 CLOSED = 3
 
 
-def read_frame(soc: Socket):
+def read_frame(soc: socket.Socket):
     byte1 = soc.recv(1)
     if byte1:
         byte2 = soc.recv(1)
@@ -42,7 +43,7 @@ def read_frame(soc: Socket):
     return None
 
 
-def write_frame(soc: Socket, opcode, data: bytes):
+def write_frame(soc: socket.Socket, opcode, data: bytes):
     length = len(data)
     byte1 = 0x80
     byte1 |= opcode
@@ -79,10 +80,10 @@ class WebSocketRequest:
 
 
 class WebSocketResponse:
-    soc: Socket
+    soc: socket.Socket
     id: str
 
-    def __init__(self, soc: Socket, id: str):
+    def __init__(self, soc: socket.Socket, id: str):
         self.soc = soc
         self.id = id
 
@@ -95,11 +96,11 @@ class WebSocketResponse:
         if data:
             frame_data['data'] = data
         frame_data_encoded = json.dumps(frame_data).encode('utf-8')
-        write_frame(self.soc, OP_TEXT, frame_data_encoded)
+        write_frame(self.soc, OP_TEXT_REQ, frame_data_encoded)
 
 
 class WebSocketClient:
-    soc: Socket
+    soc: socket.Socket
     last_ping: int
     status: int
     config: Config
@@ -116,12 +117,17 @@ class WebSocketClient:
     def loop(self):
         if self.status != READY:
             return
+        now_time = time.time()
         try:
+            if now_time - self.last_ping_time > 4:
+                self.close()
+                return
             frame = read_frame(self.soc)
             if frame is None:
                 return
+            print(frame)
             opcode, byte2, raw_data = frame
-            if opcode == OP_TEXT:
+            if opcode == OP_TEXT_RES:
                 json_frame = json.loads(raw_data.decode('utf-8'))
                 event = json_frame['event']
                 callback = self.listener.get(event)
@@ -132,21 +138,23 @@ class WebSocketClient:
                     res = WebSocketResponse(self.soc, id)
                     callback(req, res)
             elif opcode == OP_PING:
-                self.last_ping_time = time.time()
-                write_frame(self.soc, OP_PONG, b'OK')
+                write_frame(self.soc, OP_PONG, raw_data)
+                self.last_ping_time = now_time
             elif opcode == OP_CLOSE:
                 self.status = CLOSED
         except Exception as e:
             return e
 
     def send(self, event: str, data: dict):
+        if self.status != READY:
+            return
         frame_data = {
             'id': id_generator(10),
             'event': event,
             'data': data
         }
         json_data_encoded = json.dumps(frame_data).encode('utf-8')
-        write_frame(self.soc, OP_TEXT, json_data_encoded)
+        write_frame(self.soc, OP_TEXT_REQ, json_data_encoded)
 
     def on(self, event: str):
         def wrapper(callback):
@@ -170,8 +178,7 @@ class WebSocketClient:
 
         try:
             self.status = CONNECTING
-            soc = socket()
-            soc.setblocking(False)
+            soc = socket.socket()
             soc.connect((host, port))
             ws_key = binascii.b2a_base64(bytes(random.getrandbits(8) for _ in range(16)))[:-1]
 
@@ -187,20 +194,21 @@ class WebSocketClient:
             set_header('Host', f'{host}:{port}')
             set_header('Connection', 'Upgrade')
             set_header('Upgrade', 'websocket')
-            set_header('Sec-WebSocket-Key', ws_key.decode())
-            set_header('Sec-WebSocket-Version', '13')
+            set_header('Sec-Websocket-Key', ws_key.decode())
+            set_header('Sec-Websocket-Version', '13')
             set_header('auth', authorization)
             set_header('')
 
             res = soc.readline()[:-2]
             assert res.startswith(b'HTTP/1.1 101 '), res
 
+            soc.setblocking(False)
             self.status = READY
             self.last_ping_time = time.time()
             self.soc = soc
         except Exception as e:
             self.status = CLOSED
-            return e
+            print(e)
 
     def close(self, code=CLOSE_OK, reason=''):
         self.status = CLOSED

@@ -6,9 +6,10 @@ import tools.temperature
 import tools.loop
 import tools.schedule
 
-import events.mode
 
-from app import socket, pump, wifi, water_temperature, ds, outside_temperature
+from app import ws_client, pump, wifi, water_temperature, ds, outside_temperature
+
+import events.mode
 
 water_temperature.init()
 outside_temperature.init()
@@ -21,7 +22,7 @@ loop.add_callback(name='pump', period=250, callback=lambda: pump.loop())
 loop.add_callback(name='water_temperature', period=500, callback=lambda: water_temperature.loop())
 loop.add_callback(name='outside_temperature', period=500, callback=lambda: outside_temperature.loop())
 loop.add_callback(name='refresh_temperature', period=500, callback=lambda: tools.temperature.refresh_temperature())
-loop.add_callback(name='socket', callback=lambda: socket.loop())
+loop.add_callback(name='socket', callback=lambda: ws_client.loop())
 loop.add_callback(name='schedule', period=250, callback=lambda: schedule.loop())
 
 
@@ -39,9 +40,9 @@ def check_network():
         except Exception as e:
             print('wifi error', e)
     elif wlan_status == services.wifi.STAT_GOT_IP:
-        socket_status = socket.status
+        socket_status = ws_client.status
         if socket_status == services.web_socket.CLOSED or socket_status == services.web_socket.IDLE:
-            socket.connect()
+            ws_client.connect()
 
 
 while True:

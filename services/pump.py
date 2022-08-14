@@ -1,10 +1,15 @@
 import time
 from machine import Pin
 
+from tools.database import Database, Repository
 from tools.ds1307 import DS1307
-from services.water_temp import WaterTemp
 from tools.config import Config
 from tools.time_convert import get_sec
+
+from models.slot import Slot
+
+from services.water_temp import WaterTemp
+
 
 AUTO = 'AUTO'
 ON = 'ON'
@@ -18,25 +23,27 @@ class PumpService:
     pin: Pin
     mode: str
     state: bool
-    current_temp_slot: None
+    current_slot: Slot or None
     current_temp_average: float
     switch_time: int
     manual_switch_time: int
     water_temp: WaterTemp
     ds: DS1307
     config: Config
+    repo: Repository
 
-    def __init__(self, pin: int, ds: DS1307, water_temp: WaterTemp):
+    def __init__(self, pin: int, ds: DS1307, water_temp: WaterTemp, db: Database):
         self.pin = Pin(pin, Pin.OUT)
         self.mode = IDLE
         self.pin.on()
-        self.current_temp_slot = None
+        self.current_slot = None
         self.water_temp = water_temp
         self.ds = ds
         self.switch_time = 0
         self.manual_switch_time = 0
         self.state = True
         self.config = Config('pump')
+        self.repo = db.get_repository(Slot)
         self.switch(False)
 
     def init(self):
@@ -44,21 +51,23 @@ class PumpService:
         self.switch(True)
 
     def refresh_temp_slot(self):
-        self.current_temp_slot = None
-        json_temp_slots = self.config.get('temp_slots')
-        json_temp_slots.sort(key=lambda ts: ts['temp'], reverse=True)
-        for json_temp_slot in json_temp_slots:
-            if self.current_temp_average > json_temp_slot['temp']:
-                # self.current_temp_slot = TempSlot(json_temp_slot)
+        self.current_slot = None
+        slots = self.repo.fin_all()
+        slots.sort(key=lambda ts: ts.temperature, reverse=True)
+        for index in range(len(slots)):
+            slot: Slot = slots[index]
+            if self.current_temp_average > slot.temperature:
+                print(slot.__dict__)
+                self.current_slot = slot
                 break
 
     def switch(self, state: bool):
         if self.state == state:
             return
         if state:
-            self.pin.off()
-        else:
             self.pin.on()
+        else:
+            self.pin.off()
         self.water_temp.set_run(state)
         self.state = state
         self.switch_time = time.time()
@@ -69,6 +78,7 @@ class PumpService:
         if self.mode != mode:
             if mode in [ON, OFF]:
                 self.manual_switch_time = time.time()
+                self.switch(mode == ON)
             self.mode = mode
 
     def end_day(self):
@@ -79,11 +89,12 @@ class PumpService:
     def loop(self):
         mode = self.mode
         if mode == AUTO:
-            if self.current_temp_slot:
+            current_slot: Slot = self.current_slot
+            if current_slot:
                 now_rtc = self.ds.datetime()[4:7]
                 now_sec = get_sec(now_rtc)
-                for time_slot in self.current_temp_slot.time_slots:
-                    if time_slot.enable and get_sec(time_slot.start) <= now_sec < get_sec(time_slot.end):
+                for start, end, enable in current_slot.slots:
+                    if enable and get_sec(start) <= now_sec < get_sec(end):
                         self.switch(True)
                         return
                 self.switch(False)

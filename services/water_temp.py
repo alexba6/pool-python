@@ -2,6 +2,7 @@ import time
 
 import math
 
+from services.web_socket import WebSocketClient
 from tools.config import Config
 from tools.temperature import TemperatureSensor
 
@@ -13,14 +14,16 @@ class WaterTemp:
     lastTempTime: int
     run: bool
     config: Config
+    ws_client: WebSocketClient
 
-    def __init__(self):
+    def __init__(self, ws_client: WebSocketClient):
         self.sensor = TemperatureSensor()
         self.lastTemp = - 127
         self.lastTempTime = 0
         self.temp_buffer = []
         self.run = False
         self.config = Config('water-temp')
+        self.ws_client = ws_client
 
     def loop(self):
         if not self.run:
@@ -31,6 +34,10 @@ class WaterTemp:
             self.lastTemp = temp
             self.lastTempTime = now_time
             self.temp_buffer.append(temp)
+            self.ws_client.send('SENSOR', {
+                'name': 'water_temp',
+                'value': temp
+            })
 
     def get_size(self):
         return len(self.temp_buffer)

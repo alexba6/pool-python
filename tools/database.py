@@ -52,11 +52,13 @@ class Repository:
 
     def fin_all(self):
         rows = self._load()
+        items = []
         for row in rows:
             entity = self.entity()
             for key in row.keys():
                 setattr(entity, key, row[key])
-            yield entity
+            items.append(entity)
+        return items
 
     def insert(self, entity: any):
         rows = self._load()

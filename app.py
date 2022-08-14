@@ -16,8 +16,8 @@ i2c = machine.I2C(
 
 db = Database('database')
 ds = DS1307(i2c)
-socket = services.web_socket.WebSocketClient()
-water_temperature = services.water_temp.WaterTemp()
-outside_temperature = services.outside_temp.OutsideTemp(ds)
-pump = services.pump.PumpService(26, ds, water_temperature)
+ws_client = services.web_socket.WebSocketClient()
+water_temperature = services.water_temp.WaterTemp(ws_client)
+outside_temperature = services.outside_temp.OutsideTemp(ws_client)
+pump = services.pump.PumpService(26, ds, water_temperature, db)
 wifi = services.wifi.Wifi(db)
