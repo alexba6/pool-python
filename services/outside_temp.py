@@ -25,12 +25,10 @@ class OutsideTemp:
             temp = self.sensor.read()
             self.lastTemp = temp
             self.lastTempTime = now_time
-            print('Before send')
             self.ws_client.send('SENSOR', {
                 'name': 'outside_temp',
                 'value': temp
             })
-            print('After send')
 
     def init(self):
         self.sensor.id = self.config.get('sensor_id')

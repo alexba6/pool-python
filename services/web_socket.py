@@ -34,12 +34,11 @@ def read_frame(soc: socket.Socket):
     byte1 = soc.recv(1)
     if byte1:
         byte2 = soc.recv(1)
+        if byte2.decode() == '~':
+            soc.recv(2)
         data = soc.recv(1000)
 
-        def _decode_bytes(b):
-            return int(binascii.hexlify(b).decode())
-
-        return _decode_bytes(byte1), _decode_bytes(byte2), data
+        return int(binascii.hexlify(byte1).decode()), data
     return None
 
 
@@ -119,16 +118,16 @@ class WebSocketClient:
             return
         now_time = time.time()
         try:
-            if now_time - self.last_ping_time > 4:
+            if now_time - self.last_ping_time > 10:
                 self.close()
                 return
             frame = read_frame(self.soc)
             if frame is None:
                 return
-            print(frame)
-            opcode, byte2, raw_data = frame
+            opcode, raw_data = frame
             if opcode == OP_TEXT_RES:
                 json_frame = json.loads(raw_data.decode('utf-8'))
+                print('json_frame', json_frame)
                 event = json_frame['event']
                 callback = self.listener.get(event)
                 if callback:

@@ -34,6 +34,8 @@ class WaterTemp:
             self.lastTemp = temp
             self.lastTempTime = now_time
             self.temp_buffer.append(temp)
+            if len(self.temp_buffer) > 100:
+                self.temp_buffer.pop(0)
             self.ws_client.send('SENSOR', {
                 'name': 'water_temp',
                 'value': temp
@@ -42,7 +44,7 @@ class WaterTemp:
     def get_size(self):
         return len(self.temp_buffer)
 
-    def get_average(self, decimal: int = 2):
+    def get_average(self, decimal: int = 1):
         if len(self.temp_buffer) == 0:
             return - 127
         temp_sum = 0

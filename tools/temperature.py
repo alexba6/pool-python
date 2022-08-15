@@ -24,7 +24,7 @@ class TemperatureSensor:
         self.id = id
         self.temp = -127
 
-    def read(self, decimal: int = 2) -> float:
+    def read(self, decimal: int = 1) -> float:
         temp_buffer = bytearray(9)
         rom = binascii.unhexlify(self.id.encode())
         bus1wire.reset(True)

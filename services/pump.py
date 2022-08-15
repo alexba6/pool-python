@@ -1,6 +1,7 @@
 import time
 from machine import Pin
 
+from services.web_socket import WebSocketClient
 from tools.database import Database, Repository
 from tools.ds1307 import DS1307
 from tools.config import Config
@@ -9,7 +10,6 @@ from tools.time_convert import get_sec
 from models.slot import Slot
 
 from services.water_temp import WaterTemp
-
 
 AUTO = 'AUTO'
 ON = 'ON'
@@ -31,8 +31,9 @@ class PumpService:
     ds: DS1307
     config: Config
     repo: Repository
+    ws_client: WebSocketClient
 
-    def __init__(self, pin: int, ds: DS1307, water_temp: WaterTemp, db: Database):
+    def __init__(self, pin: int, ds: DS1307, water_temp: WaterTemp, db: Database, ws_client: WebSocketClient):
         self.pin = Pin(pin, Pin.OUT)
         self.mode = IDLE
         self.pin.on()
@@ -44,6 +45,7 @@ class PumpService:
         self.state = True
         self.config = Config('pump')
         self.repo = db.get_repository(Slot)
+        self.ws_client = ws_client
         self.switch(False)
 
     def init(self):
@@ -51,7 +53,6 @@ class PumpService:
         self.switch(True)
 
     def refresh_temp_slot(self):
-        self.current_slot = None
         slots = self.repo.fin_all()
         slots.sort(key=lambda ts: ts.temperature, reverse=True)
         for index in range(len(slots)):
@@ -71,6 +72,9 @@ class PumpService:
         self.water_temp.set_run(state)
         self.state = state
         self.switch_time = time.time()
+        self.ws_client.send('PUMP#CHANGE_STATE', {
+            'state': state
+        })
 
     def change_mode(self, mode: str):
         assert mode in [ON, OFF, AUTO], Exception('Invalid mode')
@@ -88,6 +92,13 @@ class PumpService:
 
     def loop(self):
         mode = self.mode
+
+        def change_auto():
+            self.mode = AUTO
+            self.ws_client.send('PUMP#CHANGE_MODE', {
+                'mode': self.mode
+            })
+
         if mode == AUTO:
             current_slot: Slot = self.current_slot
             if current_slot:
@@ -104,10 +115,10 @@ class PumpService:
             self.switch(mode == ON)
             now_time = time.time()
             if now_time - self.manual_switch_time > self.config.get('manual_max_time'):
-                self.mode = AUTO
+                change_auto()
         elif mode == STARTING:
             now_time = time.time()
             if now_time - self.switch_time > self.config.get('starting_time'):
                 self.current_temp_average = self.water_temp.get_average()
                 self.refresh_temp_slot()
-                self.mode = AUTO
+                change_auto()
