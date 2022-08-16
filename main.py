@@ -9,7 +9,8 @@ import tools.schedule
 
 from app import ws_client, pump, wifi, water_temperature, ds, outside_temperature
 
-import events.mode
+import events.action
+import events.slot
 
 water_temperature.init()
 outside_temperature.init()

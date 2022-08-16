@@ -86,7 +86,7 @@ class WebSocketResponse:
         self.soc = soc
         self.id = id
 
-    def send(self, data, status: str = 'OK'):
+    def send(self, data=None, status: str = 'OK'):
         frame_data = {
             'id': self.id,
             'event': 'CALLBACK',
@@ -158,6 +158,7 @@ class WebSocketClient:
     def on(self, event: str):
         def wrapper(callback):
             self.listener[event] = callback
+
         return wrapper
 
     def write_header(self, name: str, value: str or bytes = None):

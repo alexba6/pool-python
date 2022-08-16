@@ -50,19 +50,22 @@ class Repository:
                 return entity
         return None
 
-    def fin_all(self):
+    def find_all(self, where=None):
         rows = self._load()
         items = []
         for row in rows:
             entity = self.entity()
             for key in row.keys():
                 setattr(entity, key, row[key])
+            if where:
+                if not where(entity):
+                    continue
             items.append(entity)
         return items
 
     def insert(self, entity: any):
         rows = self._load()
-        entity.id = id_generator(10)
+        entity.id = id_generator(5)
         rows.append(entity.__dict__)
         self._save(rows)
 
